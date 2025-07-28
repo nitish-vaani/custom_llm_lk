@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveKit Agent Chat</title>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            width: 100%;
+            max-width: 1200px;
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            min-height: 500px;
+        }
+
+        .agent-selection {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            padding: 20px;
+        }
+
+        .agent-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .agent-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .agent-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+
+        .agent-card.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .agent-avatar {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .agent-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #333;
+        }
+
+        .agent-description {
+            font-size: 0.85rem;
+            color: #666;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .agent-features {
+            margin: 8px 0;
+        }
+
+        .agent-features span {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin-right: 4px;
+            margin-bottom: 4px;
+            display: inline-block;
+        }
+
+        .agent-model {
+            font-size: 0.7rem;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .agent-status-badge {
+            font-size: 0.7rem;
+            color: #28a745;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .connection-status {
+            padding: 12px 20px;
+            background: #fff3cd;
+            border-bottom: 1px solid #ffeaa7;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .connection-status.connected {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .connection-status.connecting {
+            background: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+
+        .connection-status.disconnected {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        .transcript-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #fafafa;
+        }
+
+        .transcript-message {
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 80%;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .transcript-message.user {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+        }
+
+        .transcript-message.agent {
+            background: white;
+            border: 1px solid #e9ecef;
+        }
+
+        .transcript-message.system {
+            background: #e9ecef;
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            max-width: 100%;
+            font-size: 0.9rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .controls {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #c82333;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .agent-status {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        .agent-status.listening {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .agent-status.thinking {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .agent-status.speaking {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .loading-agents {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .agent-selection {
+                width: 100%;
+            }
+            
+            .agent-list {
+                flex-direction: row;
+                overflow-x: auto;
+                padding-bottom: 10px;
+            }
+            
+            .agent-card {
+                min-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="app-title">LiveKit Agent Chat</h1>
+            <p id="app-description">Connect and chat with AI agents in real-time</p>
+        </div>
+
+        <div class="main-content">
+            <div class="agent-selection">
+                <h3 style="margin-bottom: 16px; color: #333;">Select an Agent</h3>
+                <div class="agent-list" id="agent-list">
+                    <div class="loading-agents">
+                        <div class="loading"></div>
+                        <p style="margin-top: 12px;">Loading agents...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-area">
+                <div class="connection-status disconnected" id="connection-status">
+                    Loading application...
+                </div>
+
+                <div class="transcript-area" id="transcript-area">
+                    <div class="transcript-message system">
+                        Welcome! Please wait while we load available agents...
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-primary" id="connect-btn" disabled>
+                        <span class="loading" id="connect-loading" style="display: none;"></span>
+                        Connect
+                    </button>
+                    <button class="btn btn-danger" id="disconnect-btn" disabled>
+                        Disconnect
+                    </button>
+                    <div class="agent-status" id="agent-status" style="display: none;">
+                        Ready
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration injected by server
+        // CONFIG_PLACEHOLDER
+
+        // Global variables
+        let room = null;
+        let selectedAgent = null;
+        let isConnected = false;
+        let transcripts = [];
+        let currentRoomName = null;
+        let appConfig = null;
+
+        // Initialize the app
+        async function initializeApp() {
+            try {
+                updateConnectionStatus('connecting', 'Loading configuration...');
+                
+                // Load configuration and agents dynamically
+                await loadAppConfig();
+                await loadAgents();
+                setupEventListeners();
+                
+                updateConnectionStatus('disconnected', 'Select an agent to start chatting');
+                console.log('App initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize app:', error);
+                showError(`Failed to initialize application: ${error.message}`);
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            const agentList = document.getElementById('agent-list');
+            agentList.innerHTML = `
+                <div class="error-message">
+                    <strong>Error:</strong> ${message}
+                    <br><small>Please check the console for more details.</small>
+                </div>
+            `;
+            updateConnectionStatus('disconnected', 'Application error - see agent panel');
+        }
+
+        // Load application configuration
+        async function loadAppConfig() {
+            try {
+                const response = await fetch('/api/config');
+                if (!response.ok) {
+                    throw new Error(`Failed to load config: ${response.status} ${response.statusText}`);
+                }
+                
+                appConfig = await response.json();
+                
+                // Update UI with app config
+                document.getElementById('app-title').textContent = appConfig.app?.title || 'LiveKit Agent Chat';
+                document.getElementById('app-description').textContent = appConfig.app?.description || 'Connect with AI agents';
+                
+                console.log('App configuration loaded:', appConfig);
+                addTranscriptMessage('system', '⚙️ Configuration loaded successfully');
+            } catch (error) {
+                console.error('Error loading app config:', error);
+                throw new Error(`Configuration loading failed: ${error.message}`);
+            }
+        }
+
+        // Load agents dynamically from API
+        async function loadAgents() {
+            try {
+                const response = await fetch('/api/agents');
+                if (!response.ok) {
+                    throw new Error(`Failed to load agents: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const agents = data.agents || [];
+                
+                console.log(`Loaded ${agents.length} agents from ${data.source}`);
+                renderAgents(agents);
+                
+                // Show data source info
+                addTranscriptMessage('system', `📡 Loaded ${agents.length} agents from ${data.source}`);
+                
+            } catch (error) {
+                console.error('Error loading agents:', error);
+                throw new Error(`Agent loading failed: ${error.message}`);
+            }
+        }
+
+        // Render agent list
+        function renderAgents(agents) {
+            const agentList = document.getElementById('agent-list');
+            agentList.innerHTML = '';
+
+            if (!agents || agents.length === 0) {
+                agentList.innerHTML = `
+                    <div style="text-align: center; color: #666; padding: 20px;">
+                        <p>No agents available</p>
+                        <small>Check your configuration or contact administrator</small>
+                    </div>
+                `;
+                return;
+            }
+
+            agents.forEach(agent => {
+                const agentCard = document.createElement('div');
+                agentCard.className = 'agent-card';
+                agentCard.dataset.agentId = agent.id;
+                
+                agentCard.innerHTML = `
+                    <div class="agent-avatar">${agent.avatar || '🤖'}</div>
+                    <div class="agent-name">${agent.name || 'Unknown Agent'}</div>
+                    <div class="agent-description">${agent.description || 'No description available'}</div>
+                    <div class="agent-features">
+                        ${agent.features ? agent.features.map(feature => 
+                            `<span>${feature}</span>`
+                        ).join('') : ''}
+                    </div>
+                    <div class="agent-model">${agent.model || ''}</div>
+                    <div class="agent-status-badge">${agent.status || 'Available'}</div>
+                `;
+                
+                agentCard.addEventListener('click', () => selectAgent(agent));
+                agentList.appendChild(agentCard);
+            });
+
+            addTranscriptMessage('system', 'Select an agent from the left to start a conversation.');
+        }
+
+        // Select an agent
+        function selectAgent(agent) {
+            // Remove previous selection
+            document.querySelectorAll('.agent-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Select new agent
+            const agentCard = document.querySelector(`[data-agent-id="${agent.id}"]`);
+            if (agentCard) {
+                agentCard.classList.add('selected');
+            }
+            
+            selectedAgent = agent;
+            document.getElementById('connect-btn').disabled = false;
+            
+            updateConnectionStatus('disconnected', `Ready to connect to ${agent.name}`);
+            addTranscriptMessage('system', `✨ Selected ${agent.name}. Click Connect to start chatting.`);
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            document.getElementById('connect-btn').addEventListener('click', connectToAgent);
+            document.getElementById('disconnect-btn').addEventListener('click', disconnectFromAgent);
+        }
+
+        // Generate token via server
+        async function generateToken(roomName, participantName) {
+            try {
+                const response = await fetch('/generate_token', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify({ 
+                        room_name: roomName, 
+                        participant_name: participantName,
+                        agent_type: selectedAgent.worker_type
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to generate token');
+                }
+                
+                const data = await response.json();
+                console.log('Token generated successfully');
+                return data;
+                
+            } catch (error) {
+                console.error('Token generation failed:', error);
+                throw new Error(`Token generation failed: ${error.message}`);
+            }
+        }
+
+        // Connect to agent
+        async function connectToAgent() {
+            if (!selectedAgent || isConnected) return;
+
+            try {
+                updateConnectionStatus('connecting', 'Connecting to agent...');
+                showLoading(true);
+
+                // Generate room name based on agent type and session
+                const roomPrefix = appConfig?.room?.room_name_prefix || 'call-session';
+                const roomName = `${roomPrefix}-${selectedAgent.worker_type}-${Date.now()}`;
+                const participantName = `user-${Date.now()}`;
+                
+                // Get token from server
+                const tokenData = await generateToken(roomName, participantName);
+                
+                // Create room instance
+                room = new LivekitClient.Room({
+                    adaptiveStream: true,
+                    dynacast: true,
+                });
+
+                // Set up room event listeners
+                setupRoomEventListeners();
+
+                // Connect to room with server-generated token
+                await room.connect(tokenData.livekit_url, tokenData.token);
+                
+                // Store current room name
+                currentRoomName = roomName;
+                
+                console.log(`Connected to room: ${roomName} as ${participantName}`);
+                addTranscriptMessage('system', `🎯 Joined room: ${roomName}`);
+                addTranscriptMessage('system', `⏳ Waiting for ${selectedAgent.name} to join...`);
+                
+                // Enable microphone if configured
+                if (appConfig?.ui?.enable_microphone !== false) {
+                    await enableMicrophone();
+                }
+
+                isConnected = true;
+                updateConnectionStatus('connected', `Connected to ${selectedAgent.name}`);
+                document.getElementById('connect-btn').disabled = true;
+                document.getElementById('disconnect-btn').disabled = false;
+                
+                addTranscriptMessage('system', `✅ Connected to ${selectedAgent.name}. You can now start speaking!`);
+
+            } catch (error) {
+                console.error('Connection failed:', error);
+                updateConnectionStatus('disconnected', 'Connection failed');
+                addTranscriptMessage('system', `❌ Connection failed: ${error.message}`);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Setup room event listeners
+        function setupRoomEventListeners() {
+            room.on(LivekitClient.RoomEvent.TrackSubscribed, handleTrackSubscribed);
+            room.on(LivekitClient.RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
+            room.on(LivekitClient.RoomEvent.ParticipantConnected, handleParticipantConnected);
+            room.on(LivekitClient.RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+            room.on(LivekitClient.RoomEvent.DataReceived, handleDataReceived);
+            room.on(LivekitClient.RoomEvent.Disconnected, handleDisconnected);
+            room.on(LivekitClient.RoomEvent.AudioPlaybackStatusChanged, handleAudioPlaybackStatusChanged);
+        }
+
+        // Handle track subscription (when agent publishes audio/video)
+        function handleTrackSubscribed(track, publication, participant) {
+            console.log('Track subscribed:', track.kind, participant.identity, 'isAgent:', participant.kind === LivekitClient.ParticipantKind.Agent);
+            
+            if (track.kind === LivekitClient.Track.Kind.Audio && participant.kind === LivekitClient.ParticipantKind.Agent) {
+                console.log('🔊 Agent audio track received - attaching to DOM');
+                
+                // Agent audio track - attach to DOM for playback
+                const audioElement = track.attach();
+                audioElement.autoplay = true;
+                audioElement.playsInline = true;
+                
+                // Add some attributes to help with debugging
+                audioElement.id = 'agent-audio';
+                audioElement.style.display = 'none'; // Hide audio element
+                
+                // Append to body
+                document.body.appendChild(audioElement);
+                
+                // Log audio element details
+                console.log('Audio element created:', audioElement);
+                console.log('Audio autoplay:', audioElement.autoplay);
+                console.log('Audio muted:', audioElement.muted);
+                
+                // Try to play explicitly
+                audioElement.play().then(() => {
+                    console.log('✅ Agent audio playback started successfully');
+                    addTranscriptMessage('system', '🔊 Agent audio playback started');
+                }).catch(error => {
+                    console.error('❌ Failed to start agent audio playback:', error);
+                    addTranscriptMessage('system', '❌ Failed to start audio playback - click anywhere to enable');
+                });
+                
+                showAgentStatus('speaking');
+                
+                // Add event listeners for debugging
+                audioElement.addEventListener('play', () => {
+                    console.log('🎵 Agent audio started playing');
+                });
+                
+                audioElement.addEventListener('pause', () => {
+                    console.log('⏸️ Agent audio paused');
+                });
+                
+                audioElement.addEventListener('ended', () => {
+                    console.log('🔚 Agent audio ended');
+                });
+                
+                audioElement.addEventListener('error', (e) => {
+                    console.error('🚨 Agent audio error:', e);
+                });
+            }
+        }
+
+        // Handle track unsubscription
+        function handleTrackUnsubscribed(track, publication, participant) {
+            console.log('Track unsubscribed:', track.kind, participant.identity);
+            
+            // Clean up audio elements
+            const elements = track.detach();
+            elements.forEach(element => {
+                console.log('🗑️ Removing audio element:', element.id);
+                element.remove();
+            });
+            
+            if (track.kind === LivekitClient.Track.Kind.Audio && participant.kind === LivekitClient.ParticipantKind.Agent) {
+                showAgentStatus('listening');
+                addTranscriptMessage('system', '🔇 Agent stopped speaking');
+            }
+        }
+
+        // Handle participant connected
+        function handleParticipantConnected(participant) {
+            console.log('Participant connected:', participant.identity, participant.kind);
+            
+            if (participant.kind === LivekitClient.ParticipantKind.Agent) {
+                addTranscriptMessage('system', `🤖 ${selectedAgent.name} has joined the conversation`);
+                showAgentStatus('listening');
+            }
+        }
+
+        // Handle participant disconnected  
+        function handleParticipantDisconnected(participant) {
+            console.log('Participant disconnected:', participant.identity);
+            
+            if (participant.kind === LivekitClient.ParticipantKind.Agent) {
+                addTranscriptMessage('system', `👋 ${selectedAgent.name} has left the conversation`);
+                showAgentStatus('');
+            }
+        }
+
+        // Handle data received (transcripts, agent messages, metrics)
+        function handleDataReceived(payload, participant) {
+            try {
+                const data = JSON.parse(new TextDecoder().decode(payload));
+                console.log('Data received:', data);
+                
+                // Handle different types of data from your Python agent
+                switch(data.type) {
+                    case 'transcript':
+                    case 'agent_transcript':
+                        addTranscriptMessage('agent', data.text || data.content);
+                        break;
+                        
+                    case 'user_transcript':
+                        addTranscriptMessage('user', data.text || data.content);
+                        break;
+                        
+                    case 'agent_status':
+                        showAgentStatus(data.status);
+                        break;
+                        
+                    case 'conversation_item':
+                        const role = data.item?.role || data.role;
+                        const content = data.item?.text_content || data.content || data.text;
+                        if (role && content) {
+                            addTranscriptMessage(role === 'assistant' ? 'agent' : role, content);
+                        }
+                        break;
+                        
+                    case 'session_started':
+                        addTranscriptMessage('system', '🎉 Agent session started - ready to chat!');
+                        showAgentStatus('listening');
+                        break;
+                        
+                    case 'user_started_speaking':
+                        showAgentStatus('listening');
+                        break;
+                        
+                    case 'user_stopped_speaking':
+                        showAgentStatus('thinking');
+                        break;
+                        
+                    case 'agent_started_speaking':
+                        showAgentStatus('speaking');
+                        break;
+                        
+                    case 'agent_stopped_speaking':
+                        showAgentStatus('listening');
+                        break;
+                        
+                    default:
+                        console.log('Unknown data type:', data.type, data);
+                        break;
+                }
+            } catch (error) {
+                console.error('Error parsing received data:', error);
+            }
+        }
+
+        // Handle disconnection
+        function handleDisconnected() {
+            console.log('Disconnected from room');
+            isConnected = false;
+            updateConnectionStatus('disconnected', 'Disconnected');
+            document.getElementById('connect-btn').disabled = false;
+            document.getElementById('disconnect-btn').disabled = true;
+            showAgentStatus('');
+            addTranscriptMessage('system', '🔌 Disconnected from agent');
+        }
+
+        // Handle audio playback status
+        function handleAudioPlaybackStatusChanged() {
+            console.log('Audio playback status changed. Can play:', room.canPlaybackAudio);
+            
+            if (!room.canPlaybackAudio) {
+                addTranscriptMessage('system', '🔊 Click anywhere to enable audio playback');
+                
+                // Add a one-time click listener to enable audio
+                const enableAudio = async () => {
+                    try {
+                        await room.startAudio();
+                        console.log('✅ Audio enabled via user interaction');
+                        addTranscriptMessage('system', '✅ Audio enabled');
+                        
+                        // Remove the event listener after successful activation
+                        document.removeEventListener('click', enableAudio);
+                    } catch (error) {
+                        console.error('Failed to enable audio:', error);
+                    }
+                };
+                
+                document.addEventListener('click', enableAudio, { once: true });
+            } else {
+                addTranscriptMessage('system', '✅ Audio playback is enabled');
+            }
+        }
+
+        // Enable microphone
+        async function enableMicrophone() {
+            try {
+                const track = await LivekitClient.createLocalAudioTrack({
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                });
+                await room.localParticipant.publishTrack(track);
+                console.log('Microphone enabled');
+                addTranscriptMessage('system', '🎤 Microphone enabled');
+            } catch (error) {
+                console.error('Failed to enable microphone:', error);
+                addTranscriptMessage('system', '❌ Failed to access microphone. Please check permissions.');
+            }
+        }
+
+        // Disconnect from agent
+        async function disconnectFromAgent() {
+            if (room && isConnected) {
+                await room.disconnect();
+            }
+        }
+
+        // Update connection status
+        function updateConnectionStatus(status, message) {
+            const statusElement = document.getElementById('connection-status');
+            statusElement.className = `connection-status ${status}`;
+            statusElement.textContent = message;
+        }
+
+        // Show/hide loading indicator
+        function showLoading(show) {
+            const loading = document.getElementById('connect-loading');
+            loading.style.display = show ? 'inline-block' : 'none';
+        }
+
+        // Add transcript message
+        function addTranscriptMessage(sender, text) {
+            const transcriptArea = document.getElementById('transcript-area');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `transcript-message ${sender}`;
+            messageDiv.textContent = text;
+            
+            // Add timestamp for system messages
+            if (sender === 'system') {
+                const timestamp = new Date().toLocaleTimeString();
+                messageDiv.innerHTML = `<small style="opacity: 0.7;">[${timestamp}]</small> ${text}`;
+            }
+            
+            transcriptArea.appendChild(messageDiv);
+            transcriptArea.scrollTop = transcriptArea.scrollHeight;
+            
+            // Limit number of messages
+            const transcriptLimit = appConfig?.ui?.transcript_display_limit || 100;
+            const messages = transcriptArea.querySelectorAll('.transcript-message');
+            if (messages.length > transcriptLimit) {
+                messages[0].remove();
+            }
+        }
+
+        // Show agent status
+        function showAgentStatus(status) {
+            const statusElement = document.getElementById('agent-status');
+            if (status) {
+                statusElement.style.display = 'block';
+                statusElement.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+                statusElement.className = `agent-status ${status}`;
+            } else {
+                statusElement.style.display = 'none';
+            }
+        }
+
+        // Initialize app when page loads
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+        // Enable audio on user interaction
+        document.addEventListener('click', async () => {
+            if (room && !room.canPlaybackAudio) {
+                try {
+                    await room.startAudio();
+                    addTranscriptMessage('system', '🔊 Audio enabled');
+                } catch (error) {
+                    console.error('Failed to start audio:', error);
+                }
+            }
+        }, { once: true });
+    </script>
+</body>
+</html>

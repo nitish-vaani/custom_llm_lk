@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Main application server (frontend + token generation)
+  app-server:
+    build: .
+    ports:
+      - "7000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - LIVEKIT_URL=${LIVEKIT_URL}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - AGENT_DATA_SOURCE=${AGENT_DATA_SOURCE:-config}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - SIP_OUTBOUND_TRUNK_ID=${SIP_OUTBOUND_TRUNK_ID}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    env_file:
+      - .env
+    restart: unless-stopped
+    # depends_on:
+    #   - redis
+    networks:
+      - livekit-network
+
+  # Redis for transcript streaming and caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - livekit-network
+
+  # Optional: PostgreSQL for future database use
+  # postgres:
+  #   image: postgres:15-alpine
+  #   environment:
+  #     POSTGRES_DB: livekit_agents
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: password
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   restart: unless-stopped
+  #   networks:
+  #     - livekit-network
+
+networks:
+  livekit-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+  # postgres_data:

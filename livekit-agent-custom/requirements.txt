@@ -1,0 +1,4 @@
+livekit-agents
+deepgram-sdk
+websockets
+python-dotenv

@@ -1,0 +1,63 @@
+{
+  "app": {
+    "title": "AI Call Agent Dashboard",
+    "description": "Connect with intelligent call agents powered by advanced AI",
+    "theme_color": "purple"
+  },
+  "agents": [
+    {
+      "id": "outbound-caller",
+      "name": "Outbound Caller Agent",
+      "description": "Primary outbound calling agent with comprehensive metrics and guardrails",
+      "avatar": "📞",
+      "worker_type": "outbound-caller",
+      "features": ["Voice AI", "Metrics Tracking", "Guardrails", "SIP Calling"],
+      "model": "Deepgram Nova-2 + GPT + Deepgram Aura",
+      "status": "Available"
+    },
+    {
+      "id": "outbound_caller_2", 
+      "name": "Outbound Caller Agent 2",
+      "description": "Secondary outbound calling agent for load balancing",
+      "avatar": "📱",
+      "worker_type": "outbound-caller2",
+      "features": ["Voice AI", "Metrics Tracking", "Guardrails", "SIP Calling"],
+      "model": "Deepgram Nova-2 + GPT + Deepgram Aura",
+      "status": "Available"
+    }
+  ],
+  "redis": {
+    "host": "localhost",
+    "port": 6379,
+    "db": 0,
+    "transcript_channel": "transcript_channel"
+  },
+  "metrics": {
+    "enable_comprehensive_tracking": true,
+    "enable_user_latency_tracking": true,
+    "enable_network_latency_measurement": true,
+    "log_conversation_items": true
+  },
+  "ui": {
+    "show_video": false,
+    "show_chat": true,
+    "show_transcripts": true,
+    "show_metrics": true,
+    "show_agent_status": true,
+    "enable_microphone": true,
+    "enable_camera": false,
+    "auto_connect_audio": true,
+    "transcript_display_limit": 100,
+    "show_redis_status": true,
+    "show_network_status": true
+  },
+  "room": {
+    "auto_disconnect_on_leave": true,
+    "max_session_duration_minutes": 60,
+    "room_name_prefix": "call-session"
+  },
+  "telephony": {
+    "enable_sip_calling": true,
+    "default_country_code": "+1"
+  }
+}
